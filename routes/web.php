@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+// use Hash;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::get('/hash', function () {
+    // return Hash::make('123123123');
 });
 
 Auth::routes();
