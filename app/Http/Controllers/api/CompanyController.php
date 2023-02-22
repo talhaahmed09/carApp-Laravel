@@ -18,56 +18,24 @@ class CompanyController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-      
-      $message='';
-      $status='';
-       if($this->getUser()->hasRole('super-admin')){
-          $companies=Company::all();
-          $message=($companies->isNotEmpty()) ? $companies : 'Company not found';
-          $status=($companies->isNotEmpty()) ? 200 : 404;
-             }
-             elseif ($this->getUser()->can('list-company')) {
-          $companies=Company::all()->where('id',$this->getUser()->company_id);
-          $message=($companies->isNotEmpty()) ? $companies : 'Company not found';
-          $status=($companies->isNotEmpty()) ? 200 : 404;
-             }
-        
-        else{
-             $message='Permission denied';
-          $status=403;
-        }
-              return response()->json([
-            'responseMessage' => $message,
-            'responseStatus'  => $status,
-        ]);
-        // return 'r';
-        // $user = Auth::guard('api')->user()->with('roles')->get();
-        // $user = Auth::guard('api')->user()->with('roles.permissions')->get();
-      // return response()->json(Auth::user()->hasPermissionViaRole());
-// ->hasPermissionTo('manage-users')
-        return response()->json($this->getUser()->can('view-company'));
-               dd(
-                 Auth::user(),
-             Auth::user()->getAllPermissions()->toArray(),
-             Auth::user()->can('manage-company'),
-             Auth::user()->hasPermissionTo('manage-company')
-        );
-        $user = Auth::user();
-// return Permission::find(2)->id;
-         return Auth::guard('api')->user()->can('permissions:read');
-        return config('auth.defaults.guard');
-        return Auth::guard('api')->user()->can('edit-passwordds');
-        return $this->getUser()->hasPermissionTo(2);
-      //  $user = \Auth::user();
-      //  //returning role of user
-      //  return $this->getUser()->permissions;
-      // // return app('auth')->user()->getAllPermissions()->toArray();
-      //   return app('auth')->user()->can('manage-users');
-      //  $roles = $this->getUser()->roles()->pluck('name');
-      //  // return $user;
-      //       return $this->getUser()->hasPermissionTo('manage-company');
+      $perPage  = $request->size;
+      $sortBy   = $request->sortBy?$request->sortBy:"name";
+      $sort     = $request->sort?$request->sort:"ASC";
+      $message  = '';
+      $status   = 403;
+      if($this->getUser()->hasRole('super-admin')){
+        $companies  = Company::orderBy($sortBy, $sort)->paginate($perPage); // $request->all()$request->all()
+      }elseif ($this->getUser()->can('list-company')) {
+        $companies  = Company::orderBy($sortBy, $sort)->paginate($perPage)->where('id',$this->getUser()->company_id);
+      }else{
+        $message  = 'Permission denied';
+      }
+      $status = ($companies->isNotEmpty()) ? 200 : 404;
+      return response()->json([
+        "objData" => $companies
+      ], 200);
 
     }
 
@@ -79,27 +47,23 @@ class CompanyController extends Controller
      */
     public function store(Request $request)
     {
-        // return $request->all();
-
-        //check if role superadmin or permission create-company
-
- if($this->getUser()->can('create-company') || $this->getUser()->hasRole('super-admin')){
+      if($this->getUser()->can('create-company') || $this->getUser()->hasRole('super-admin')){
         $validatedData = $request->validate(Company::$createRules);
-         // return $validatedData;
         if($validatedData){
-            Company::create($validatedData);
-                return response()->json([
-            'responseMessage' => 'Company created',
-            'responseStatus'  => 200,
-        ]);
+          Company::create($validatedData);
+          return response()->json([
+              "objData" => [
+                  'message' => "Company created"
+              ]
+          ], 200);
         }
-}
-  else{
-               return response()->json([
-            'responseMessage' => 'Permission denied',
-            'responseStatus'  => 403,
-        ]);
-        }
+      }else{
+        return response()->json([
+            "error" => [
+                'message' => "Permission denied"
+            ]
+        ], 403);
+      }
     }
 
     /**
@@ -110,22 +74,25 @@ class CompanyController extends Controller
      */
     public function show($id)
     {
-      
-        //check if role superadmin or permission create-company
-  
-        if(($this->getUser()->can('view-company') && $this->getUser()->company_id == $id) || $this->getUser()->hasRole('super-admin')){
-        $company=Company::find($id);
+      if(($this->getUser()->can('view-company') && $this->getUser()->company_id == $id) || $this->getUser()->hasRole('super-admin')){
+        $objData = [
+          "content" => Company::find($id)
+        ];
+        if(!$objData["content"]){
+          $objData    = [
+            "message"=> "Company not found"
+          ];
+        } 
         return response()->json([
-            'responseMessage' => ($company) ? $company : 'Company not found',
-            'responseStatus'  =>($company) ? 200 : 404,
-        ]);
-}
-  else{
-               return response()->json([
-            'responseMessage' => 'Permission denied',
-            'responseStatus'  => 403,
-        ]);
-        }
+            "objData" => $objData
+        ], 200);
+      }else{
+        return response()->json([
+          "error" => [
+            'message' => "Permission denied"
+          ]
+        ], 403);
+      }
     }
 
     /**
@@ -137,38 +104,33 @@ class CompanyController extends Controller
      */
     public function update(Request $request, $id)
     {
-       
-
-        //check if role superadmin or permission create-company
-        if(($this->getUser()->can('edit-company')  && $this->getUser()->company_id == $id)|| $this->getUser()->hasRole('super-admin')){
-      $company=Company::find($id);
-      if($company){
-
-$rule= ($company->email != $request->email) ? Company::$createRules : Company::$updateRules;
-
-         $validatedData = $request->validate($rule);
-
-        if($validatedData){
+      //check if role superadmin or permission create-company
+      if(($this->getUser()->can('edit-company')  && $this->getUser()->company_id == $id)|| $this->getUser()->hasRole('super-admin')){
+        $company=Company::find($id);
+        if($company){
+          $rule = ($company->email != $request->email) ? Company::$createRules : Company::$updateRules;
+          $validatedData = $request->validate($rule);
+          if($validatedData){
             $company->update($validatedData);
-                return response()->json([
-            'responseMessage' => 'Company updated',
-            'responseStatus'  => 200,
-        ]);
+            $objData    = [
+              "message"=> "Company updated"
+            ];
+          }
+        }else{
+          $objData    = [
+            "message"=> "Company not found"
+          ];
         }
+        return response()->json([
+            "objData" => $objData
+        ], 200);
+      }else{
+        return response()->json([
+          "error" => [
+            'message' => "Permission denied"
+          ]
+        ], 403);
       }
-      else{
-            return response()->json([
-            'responseMessage' => 'Company not found',
-            'responseStatus'  => 404,
-        ]);
-            }
-       }
-  else{
-               return response()->json([
-            'responseMessage' => 'Permission denied',
-            'responseStatus'  => 403,
-        ]);
-        }
     }
 
     /**
@@ -177,10 +139,9 @@ $rule= ($company->email != $request->email) ? Company::$createRules : Company::$
      * @param  \App\Models\Company  $company
      * @return \Illuminate\Http\Response
      */
-   public function destroy($id)
-    {
-    //   return 'a';
-       if(($this->getUser()->can('delete-company')  && $this->getUser()->company_id == $id)|| $this->getUser()->hasRole('super-admin')){
+  public function destroy($id)
+  {
+    if(($this->getUser()->can('delete-company')  && $this->getUser()->company_id == $id)|| $this->getUser()->hasRole('super-admin')){
       $company=Company::find($id);
 
       if($company){
@@ -250,8 +211,8 @@ $company->vehicles()->delete();
         }
   }
 
-      public function getUser(){
+  public function getUser(){
     return app('auth')->user();
-    }
+  }
 
 }

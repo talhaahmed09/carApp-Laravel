@@ -32,37 +32,40 @@ public $successStatus = 200;
             $success['user']= $user;
              // $accessToken = $user->createToken('authToken')->accessToken;
             return response()->json(['success' => $success], $this->successStatus); 
-        } 
-        else{ 
-           throw new UnauthorizedHttpException("Invalid Credential", 401);
-             // UnauthorizedHttpException()
-            // return response()->json(['error'=>'Unauthorised'], 401); 
+        }else{ 
+            return response()->json([
+                "error" => [
+                    'message' => "Invalid Credential"
+                ]
+            ], 401);
         } 
     }
-/** 
+    /** 
      * Register api 
      * 
      * @return \Illuminate\Http\Response 
      */ 
     public function register(Request $request) 
-    { 
+    {
         $validator = Validator::make($request->all(), [ 
-            'name' => 'required', 
-            'email' => 'required|email', 
-            'password' => 'required', 
-            'c_password' => 'required|same:password', 
+            'first_name'    => 'required', 
+            'last_name'     => 'required', 
+            'email'         => 'required|email', 
+            'password'      => 'required', 
+            'c_password'    => 'required|same:password', 
         ]);
-if ($validator->fails()) { 
+        if ($validator->fails()) { 
             return response()->json(['error'=>$validator->errors()], 401);            
         }
-$input = $request->all(); 
-        $input['password'] = bcrypt($input['password']); 
-        $user = User::create($input); 
-        $success['token'] =  $user->createToken('MyApp')->accessToken; 
-        $success['name'] =  $user->name;
-return response()->json(['success'=>$success], $this->successStatus); 
+        unset($request["c_password"]);
+        $input = $request->all(); 
+                $input['password'] = bcrypt($input['password']); 
+                $user = User::create($input); 
+                $success['token'] =  $user->createToken('MyApp')->accessToken; 
+                $success['name'] =  $user->name;
+        return response()->json(['success'=>$success], $this->successStatus); 
     }
-/** 
+    /** 
      * details api 
      * 
      * @return \Illuminate\Http\Response 
