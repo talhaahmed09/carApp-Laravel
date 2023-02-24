@@ -23,20 +23,19 @@ class CompanyController extends Controller
       $perPage  = $request->size;
       $sortBy   = $request->sortBy?$request->sortBy:"name";
       $sort     = $request->sort?$request->sort:"ASC";
-      $message  = '';
-      $status   = 403;
       if($this->getUser()->hasRole('super-admin')){
-        $companies  = Company::orderBy($sortBy, $sort)->paginate($perPage); // $request->all()$request->all()
-      }elseif ($this->getUser()->can('list-company')) {
-        $companies  = Company::orderBy($sortBy, $sort)->paginate($perPage)->where('id',$this->getUser()->company_id);
+        $objData  = Company::orderBy($sortBy, $sort)->paginate($perPage); // $request->all()$request->all()
       }else{
-        $message  = 'Permission denied';
+        $objData  = [
+          'message' => "Permission denied"
+        ];
       }
-      $status = ($companies->isNotEmpty()) ? 200 : 404;
+      // elseif ($this->getUser()->can('list-company')) {
+      //   $objData  = Company::orderBy($sortBy, $sort)->paginate($perPage)->where('id',$this->getUser()->company_id);
+      // }
       return response()->json([
-        "objData" => $companies
+        "objData" => $objData
       ], 200);
-
     }
 
     /**
@@ -143,76 +142,95 @@ class CompanyController extends Controller
   {
     if(($this->getUser()->can('delete-company')  && $this->getUser()->company_id == $id)|| $this->getUser()->hasRole('super-admin')){
       $company=Company::find($id);
-
       if($company){
-          $company->addresses()->delete();
-          
-         
-     foreach($company->files as $file){
-      
-         if(isset($file['Vehicle'])){
-              $vId=$file['Vehicle'][0]->id;
-               $veh=Vehicle::find($vId);
-                if(count($file->protocol) > 0){
-  $file->protocol()->delete();
-    }
-     $veh->tiers()->delete();
-  $veh->delete();
+        $company->addresses()->delete();
+        foreach($company->files as $file){
+          if(isset($file['Vehicle'])){
+            $vId=$file['Vehicle'][0]->id;
+            $veh=Vehicle::find($vId);
+            if(count($file->protocol) > 0){
+              $file->protocol()->delete();
+            }
+            $veh->tiers()->delete();
+            $veh->delete();
+          }
+          if(isset($file->d_documents) && $file->d_documents != ''){
+            $docs=explode(',',ltrim($file->d_documents,','));
+            foreach ($docs as $key => $value) {
+              $path='uploads/'.$this->getUser()->company_id.'/documents/'.$value;
+              if(file_exists($path)){
+                unlink($path);
+              }
+            }
+          }
+          if(isset($file->p_photos) && $file->p_photos != ''){
+            $photos=explode(',',ltrim($file->p_photos,','));
+            foreach ($photos as $key => $value) {
+              $path='uploads/'.$this->getUser()->company_id.'/photos/'.$value;
+              if(file_exists($path)){
+                unlink($path);
+              }
+            }
+          }
+          $file->delete();
          }
-           if(isset($file->d_documents) && $file->d_documents != ''){
-
-$docs=explode(',',ltrim($file->d_documents,','));
-foreach ($docs as $key => $value) {
-  $path='uploads/'.$this->getUser()->company_id.'/documents/'.$value;
-if(file_exists($path)){
-  unlink($path);
-}
-}
-    }
-      if(isset($file->p_photos) && $file->p_photos != ''){
-
-$photos=explode(',',ltrim($file->p_photos,','));
-
-foreach ($photos as $key => $value) {
-  $path='uploads/'.$this->getUser()->company_id.'/photos/'.$value;
-if(file_exists($path)){
-  unlink($path);
-}
-}
-    }
-    
- $file->delete();
-     }
-          
-$company->vehicles()->delete();
-  $company->QuestionTypes()->delete();    
-          
-      $company->delete();
-       return response()->json([
-            'responseMessage' => 'Company deleted',
-            'responseStatus'  => 200,
-        ]);
-         
-
+        $company->vehicles()->delete();
+        $company->QuestionTypes()->delete();     
+        $company->delete();
+        return response()->json([
+          "objData" => [
+            'message' => "Company Deleted"
+          ]
+        ], 403);
+      }else{return response()->json([
+        "objData" => [
+          'message' => "Company not Found"
+        ]
+      ], 403);
       }
-      else{
-           return response()->json([
-            'responseMessage' => 'Company not found',
-            'responseStatus'  => 404,
-        ]);
-
-      }
+    }else{
+      return response()->json([
+        "objData" => [
+          'message' => "Permission denied"
+        ]
+      ], 403);
     }
-      else{
-               return response()->json([
-            'responseMessage' => 'Permission denied',
-            'responseStatus'  => 403,
-        ]);
-        }
   }
 
   public function getUser(){
     return app('auth')->user();
   }
 
+  public function search(Request $request)
+  {
+    if(!$this->getUser()->hasRole('super-admin') && !$this->getUser()->can('list-company')){
+      return response()->json([
+        "objData" => [
+          'message' => "Permission denied"
+        ]
+      ], 401);
+    }
+    $query = "%".$request["query"]."%";
+    
+    $objData  = Company::where('name',  'LIKE', $query)
+      ->orWhere('director',   'LIKE', $query)
+      ->orWhere('register',   'LIKE', $query)
+      ->orWhere('person',     'LIKE', $query)
+      ->orWhere('tax_number', 'LIKE', $query)
+      ->orWhere('email',      'LIKE', $query)
+      ->orWhere('phone',      'LIKE', $query)
+      ->orWhere('homepage',   'LIKE', $query)
+      ->orWhere('mobile',     'LIKE', $query)
+      ->orWhere('fax',        'LIKE', $query)
+      ->orWhere('country',    'LIKE', $query)
+      ->orWhere('city',       'LIKE', $query)
+      ->orWhere('street_no',  'LIKE', $query)
+      ->orWhere('mailbox',    'LIKE', $query)
+      ->get();
+    return response()->json([
+      "objData" => $objData
+    ], 200);
+  }
+
 }
+
