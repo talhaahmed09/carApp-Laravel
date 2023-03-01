@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
+use DB;
 use App\Models\Company;
-use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth; 
 
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -141,59 +142,71 @@ class CompanyController extends Controller
   public function destroy($id)
   {
     if(($this->getUser()->can('delete-company')  && $this->getUser()->company_id == $id)|| $this->getUser()->hasRole('super-admin')){
-      $company=Company::find($id);
+      $company = Company::find($id);
       if($company){
-        $company->addresses()->delete();
-        foreach($company->files as $file){
-          if(isset($file['Vehicle'])){
-            $vId=$file['Vehicle'][0]->id;
-            $veh=Vehicle::find($vId);
-            if(count($file->protocol) > 0){
-              $file->protocol()->delete();
+        DB::beginTransaction();
+        try {
+          $company->addresses()->delete();
+          foreach($company->files as $file){
+            if(isset($file['Vehicle'])){
+              $vId = $file['Vehicle'][0]->id;
+              $veh = Vehicle::find($vId);
+              if(count($file->protocol) > 0){
+                $file->protocol()->delete();
+              }
+              $veh->tiers()->delete();
+              $veh->delete();
             }
-            $veh->tiers()->delete();
-            $veh->delete();
-          }
-          if(isset($file->d_documents) && $file->d_documents != ''){
-            $docs=explode(',',ltrim($file->d_documents,','));
-            foreach ($docs as $key => $value) {
-              $path='uploads/'.$this->getUser()->company_id.'/documents/'.$value;
-              if(file_exists($path)){
-                unlink($path);
+            if(isset($file->d_documents) && $file->d_documents != ''){
+              $docs = explode(',',ltrim($file->d_documents,','));
+              foreach ($docs as $key => $value) {
+                $path = 'uploads/'.$this->getUser()->company_id.'/documents/'.$value;
+                if(file_exists($path)){
+                  unlink($path);
+                }
               }
             }
-          }
-          if(isset($file->p_photos) && $file->p_photos != ''){
-            $photos=explode(',',ltrim($file->p_photos,','));
-            foreach ($photos as $key => $value) {
-              $path='uploads/'.$this->getUser()->company_id.'/photos/'.$value;
-              if(file_exists($path)){
-                unlink($path);
+            if(isset($file->p_photos) && $file->p_photos != ''){
+              $photos = explode(',',ltrim($file->p_photos,','));
+              foreach ($photos as $key => $value) {
+                $path = 'uploads/'.$this->getUser()->company_id.'/photos/'.$value;
+                if(file_exists($path)){
+                  unlink($path);
+                }
               }
             }
+            $file->delete();
           }
-          $file->delete();
-         }
-        $company->vehicles()->delete();
-        $company->QuestionTypes()->delete();     
-        $company->delete();
+          $company->vehicles()->delete();
+          $company->QuestionTypes()->delete();     
+          $company->delete();
+          DB::commit();
+          return response()->json([
+            "objData" => [
+              'message' => "Company Deleted"
+            ]
+          ], 200);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+              "objData" => [
+                'message' => $e//"Something went wrong"
+              ]
+            ], 400);
+        }
+      }else{
         return response()->json([
-          "objData" => [
-            'message' => "Company Deleted"
+          "error" => [
+            'message' => "Company not Found"
           ]
-        ], 403);
-      }else{return response()->json([
-        "objData" => [
-          'message' => "Company not Found"
-        ]
-      ], 403);
+        ], 400);
       }
     }else{
       return response()->json([
-        "objData" => [
+        "error" => [
           'message' => "Permission denied"
         ]
-      ], 403);
+      ], 401);
     }
   }
 
@@ -210,7 +223,10 @@ class CompanyController extends Controller
         ]
       ], 401);
     }
-    $query = "%".$request["query"]."%";
+    $perPage    = $request->size;
+    $sortBy     = $request->sortBy?$request->sortBy:"name";
+    $sort       = $request->sort?$request->sort:"ASC";
+    $query      = "%".$request["query"]."%";
     
     $objData  = Company::where('name',  'LIKE', $query)
       ->orWhere('director',   'LIKE', $query)
@@ -226,7 +242,7 @@ class CompanyController extends Controller
       ->orWhere('city',       'LIKE', $query)
       ->orWhere('street_no',  'LIKE', $query)
       ->orWhere('mailbox',    'LIKE', $query)
-      ->get();
+      ->orderBy($sortBy, $sort)->paginate($perPage);
     return response()->json([
       "objData" => $objData
     ], 200);
