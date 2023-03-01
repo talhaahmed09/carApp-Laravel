@@ -113,30 +113,32 @@ class UserController extends Controller
          // return $user;
         if(!$user){
             return response()->json([
-                'responseMessage' => 'User not found',
-                'responseStatus'  => 404,
-            ]);
+                "error" => [
+                    "message" => "User not found"
+                ]
+            ], 400);
         } 
 
         if(($this->getUser()->can('edit-user') && $this->getUser()->company_id == $user->company_id) || $this->getUser()->hasRole('super-admin')){
 
             if(!$this->getUser()->hasRole('super-admin') && $user->hasRole('super-admin')){
                 return response()->json([
-                    'responseMessage' => 'Permission denied',
-                    'responseStatus'  => 403,
-                ]);
+                    "error" => [
+                        "message" => "Permission denied"
+                    ]
+                ], 401);
             }
-            $rule           = ($user->email != $request->email) ? User::$createRules : User::$updateRules;
+            $rule           = User::$updateRules;
             $validatedData  = $request->validate($rule);
          
             if($validatedData){
-                $validatedData['password'] = Hash::make($validatedData['password']);
                 $user->update(collect($validatedData)->except(['role'])->toArray());
                 $user->syncRoles($request->role);
                 return response()->json([
-                    'responseMessage' => 'User updated',
-                    'responseStatus'  => 200,
-                ]);
+                  "objData" => [
+                    "message" => "User Updated"
+                  ]
+                ], 200);
             }
 
         }else{
@@ -166,6 +168,7 @@ class UserController extends Controller
         } 
 
         if(($this->getUser()->can('delete-user')  && $this->getUser()->company_id == $user->company_id)|| $this->getUser()->hasRole('super-admin')){
+
             if(!$this->getUser()->hasRole('super-admin') && $user->hasRole('super-admin')){
                 return response()->json([
                     'responseMessage' => 'Permission denied',
@@ -216,56 +219,43 @@ class UserController extends Controller
         }  
     }
 
-    public function getUser(){
+    public function getUser()
+    {
         return app('auth')->user();
     }
     
-  public function search(Request $request)
-  {
-    if(!$this->getUser()->hasRole('super-admin') && !$this->getUser()->can('list-user')){
-      return response()->json([
-        "objData" => [
-          'message' => "Permission denied"
-        ]
-      ], 401);
+    public function search(Request $request)
+    {
+        if(!$this->getUser()->hasRole('super-admin') && !$this->getUser()->can('list-user')){
+            return response()->json([
+            "objData" => [
+                'message' => "Permission denied"
+            ]
+            ], 401);
+        }
+        $perPage    = $request->size;
+        $sortBy     = $request->sortBy?$request->sortBy:"first_name";
+        $sort       = $request->sort?$request->sort:"ASC";
+        $query      = "%".$request["query"]."%";
+
+        $objData  = User::where('salution',  'LIKE', $query)
+            ->orWhere('title',        'LIKE', $query)
+            ->orWhere('first_name',   'LIKE', $query)
+            ->orWhere('last_name',    'LIKE', $query)
+            ->orWhere('birthday',     'LIKE', $query)
+            ->orWhere('homepage',     'LIKE', $query)
+            ->orWhere('telephone',    'LIKE', $query)
+            ->orWhere('mobile',       'LIKE', $query)
+            ->orWhere('fax',          'LIKE', $query)
+            ->orWhere('country',      'LIKE', $query)
+            ->orWhere('city',         'LIKE', $query)
+            ->orWhere('street_no',    'LIKE', $query)
+            ->orWhere('email',        'LIKE', $query)
+            ->orWhere('password',     'LIKE', $query)
+            ->orWhere('mailbox',      'LIKE', $query)
+            ->orderBy($sortBy, $sort)->paginate($perPage);
+        return response()->json([
+            "objData" => $objData
+        ], 200);
     }
-    $query = "%".$request["query"]."%";
-    
-    $objData  = User::where('salution',  'LIKE', $query)
-      ->orWhere('title',        'LIKE', $query)
-      ->orWhere('first_name',   'LIKE', $query)
-      ->orWhere('last_name',    'LIKE', $query)
-      ->orWhere('birthday',     'LIKE', $query)
-      ->orWhere('homepage',     'LIKE', $query)
-      ->orWhere('telephone',    'LIKE', $query)
-      ->orWhere('mobile',       'LIKE', $query)
-      ->orWhere('fax',          'LIKE', $query)
-      ->orWhere('country',      'LIKE', $query)
-      ->orWhere('city',         'LIKE', $query)
-      ->orWhere('street_no',    'LIKE', $query)
-      ->orWhere('email',        'LIKE', $query)
-      ->orWhere('password',     'LIKE', $query)
-      ->orWhere('mailbox',      'LIKE', $query)
-      ->get();
-    return response()->json([
-      "objData" => $objData
-    ], 200);
-  }
 }
-/*
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``, 
-``,  
-``
-*/
