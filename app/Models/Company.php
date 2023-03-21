@@ -14,36 +14,36 @@ class Company extends Model
     use HasFactory;
 
        public static $createRules = [
-        'name' => 'required',
-        'director' => 'required',
-        'person' => 'required',
-        'tax_number' => 'required',
-        'email' => 'required|unique:companies',
-        'phone' => 'required',
-        'mobile' => 'required',
-        'fax' => 'required',
-        'country' => 'required',
-        'city' => 'required',
-        'street_no' => 'required',
-        'mailbox' => 'required',
-        'register'=>'required',
-        'homepage'=>'sometimes'
+        'name'        => 'required',
+        'director'    => 'required',
+        'email'       => 'required|unique:companies',
+        'phone'       => 'required',
+        'mobile'      => 'required',
+        'country'     => 'required',
+        'city'        => 'required',
+        'street_no'   => 'required',
+        // 'person'     => 'required',
+        // 'tax_number' => 'required',
+        // 'mailbox'    => 'required',
+        // 'register'   => 'required',
+        // 'fax'        => 'required',
+        // 'homepage'   => 'sometimes'
     ];
       public static $updateRules = [
-        'name' => 'required',
-        'director' => 'required',
-        'person' => 'required',
-        'tax_number' => 'required',
-         'email' => 'required|email',
-        'phone' => 'required',
-        'mobile' => 'required',
-        'fax' => 'required',
-        'country' => 'required',
-        'city' => 'required',
-        'street_no' => 'required',
-        'mailbox' => 'required',
-         'register'=>'required',
-        'homepage'=>'sometimes'
+        'name'        => 'required',
+        'director'    => 'required',
+        'email'       => 'required|unique:companies',
+        'phone'       => 'required',
+        'mobile'      => 'required',
+        'country'     => 'required',
+        'city'        => 'required',
+        'street_no'   => 'required',
+        // 'person'     => 'required',
+        // 'tax_number' => 'required',
+        // 'mailbox'    => 'required',
+        // 'register'   => 'required',
+        // 'fax'        => 'required',
+        // 'homepage'   => 'sometimes'
 
     ];
     protected $guarded=[];
