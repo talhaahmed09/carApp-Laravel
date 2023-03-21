@@ -24,20 +24,19 @@ class UserFactory extends Factory
         //     'remember_token' => Str::random(10),
         // ];
          return [
-            'first_name' => $this->faker->firstName(),
-            'last_name' => $this->faker->lastName(),
-            'birthday'=>$this->faker->date(),
-            'email' => $this->faker->unique()->safeEmail(),
+            'first_name'        => $this->faker->firstName(),
+            'last_name'         => $this->faker->lastName(),
+            'birthday'          => $this->faker->date(),
+            'email'             => $this->faker->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'mobile' => $this->faker->unique()->phoneNumber(),
-            'country'=>$this->faker->country(),
-            'city'=>$this->faker->city(),
-             // 'company_id'=>$this->faker->unique()->randomDigit,
-             'company_id'=>Company::Factory(),
-
-            // 'password' => 'Test@123', // password
-            'password'=>Hash::make('Test@123'),
-            'remember_token' => Str::random(10),
+            'mobile'            => $this->faker->unique()->phoneNumber(),
+            'country'           => $this->faker->country(),
+            'city'              => $this->faker->city(),
+             'company_id'       => Company::Factory(),
+            'password'          => Hash::make('Test@123'),
+            'remember_token'    => Str::random(10),
+            'zipcode'           => $this->faker->numerify('#####'),
+            'status'            => 1,
         ];
 
     }
