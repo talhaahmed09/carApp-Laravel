@@ -20,7 +20,7 @@ class UserController extends Controller
         $sortBy   = $request->sortBy?$request->sortBy:"first_name";
         $sort     = $request->sort?$request->sort:"ASC";
         if($this->getUser()->hasRole('super-admin')){
-            $objData  = User::orderBy($sortBy, $sort)->paginate($perPage); // $request->all()$request->all()
+            $objData  = User::where('id', '!=',  1)->orderBy($sortBy, $sort)->paginate($perPage); // $request->all()$request->all()
         }else{
             $objData  = [
                 'message' => "Permission denied"
